@@ -1,7 +1,7 @@
 #include <iostream>
 #include <dqrobotics/DQ.h>
 #include <dqrobotics/interfaces/coppeliasim/DQ_CoppeliaSimInterface.h>
-
+#include <dqrobotics/interfaces/coppeliasim/DQ_CoppeliaSimModels.h>
 
 using namespace DQ_robotics;
 using namespace Eigen;
@@ -10,6 +10,14 @@ int main()
 {
     auto vi = std::make_shared<DQ_CoppeliaSimInterface>();
     vi->connect();
+    auto model_manager = std::make_shared<DQ_CoppeliaSimModels>(vi);
+    model_manager->load_primitive(DQ_CoppeliaSimInterface::PRIMITIVE::SPHEROID,
+                                  "/Sphere",
+                                  1 + 0.5*E_*0.5*k_,
+                                  {0.2,0.2,0.2},
+                                  {1,0,0,1},
+                                  false, true);
+
     vi->set_gravity(DQ(0));
     vi->set_stepping_mode(true);
 
