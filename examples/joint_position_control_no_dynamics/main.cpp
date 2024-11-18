@@ -27,8 +27,8 @@ Contributors:
 */
 
 #include <dqrobotics/DQ.h>
-#include <dqrobotics/interfaces/coppeliasim/DQ_CoppeliaSimInterface.h>
-#include <dqrobotics/interfaces/coppeliasim/robots/URXCoppeliaSimRobot.h>
+#include <dqrobotics/interfaces/coppeliasim/DQ_CoppeliaSimZmqInterface.h>
+#include <dqrobotics/interfaces/coppeliasim/robots/URXCoppeliaSimZmqRobot.h>
 
 using namespace DQ_robotics;
 using namespace Eigen;
@@ -41,18 +41,27 @@ VectorXd compute_control_signal(const MatrixXd J,
 
 int main()
 {
-    auto vi = std::make_shared<DQ_CoppeliaSimInterface>();
+    auto vi = std::make_shared<DQ_CoppeliaSimZmqInterface>();
     vi->connect();
 
-    // Load the models only if they are not already on the scene.
-    vi->load_from_model_browser("/robots/non-mobile/UR5.ttm", "/UR5");
-    vi->load_from_model_browser("/other/reference frame.ttm", "/Current_pose");
-    vi->load_from_model_browser("/other/reference frame.ttm", "/Desired_pose");
-    vi->start_simulation();
 
-    auto robot = URXCoppeliaSimRobot("/UR5", vi, URXCoppeliaSimRobot::MODEL::UR5);
+    auto vi_exp = std::make_shared<DQ_CoppeliaSimZmqInterface::experimental>(vi);
+    vi_exp->close_scene();
+
+    // Load the models only if they are not already on the scene.
+    vi_exp->load_from_model_browser("/robots/non-mobile/UR5.ttm", "/UR5");
+    vi_exp->load_from_model_browser("/other/reference frame.ttm", "/Current_pose");
+    //vi_exp->load_from_model_browser("/other/reference frame.ttm", "/Desired_pose");
+    vi_exp->plot_reference_frame("/Desired_pose", DQ(1), 1.5, {0.02, 0.1});
+
+
+    auto robot = URXCoppeliaSimZmqRobot("/UR5", vi, URXCoppeliaSimZmqRobot::MODEL::UR5);
     auto robot_model = robot.kinematics();
-    robot.set_robot_as_visualization_tool();
+
+    vi_exp->enable_dynamics(false);
+    //vi_exp->set_joint_control_modes(robot.get_joint_names(), DQ_CoppeliaSimZmqInterface::JOINT_CONTROL_MODE::POSITION);
+    vi_exp->set_joint_modes(robot.get_joint_names(), DQ_CoppeliaSimZmqInterface::JOINT_MODE::KINEMATIC);
+
 
     VectorXd q = robot.get_configuration_space_positions();
     double gain = 10;
@@ -61,6 +70,8 @@ int main()
 
     auto xd = robot_model.fkm(((VectorXd(6) <<  0.5, 0, 1.5, 0, 0, 0).finished()));
     vi->set_object_pose("/Desired_pose", xd);
+
+    vi->start_simulation();
 
     for (int i=0; i<300; i++)
     {
@@ -71,7 +82,7 @@ int main()
         auto task_error = (x.translation()-xd.translation()).vec4();
         auto u = compute_control_signal(Jt, q, damping, gain, task_error);
         q = q + T*u;
-        robot.set_control_inputs(q);
+        robot.set_configuration_space_positions(q);
         std::cout<<"error: "<<task_error.norm()<<std::endl;
     }
     vi->stop_simulation();
