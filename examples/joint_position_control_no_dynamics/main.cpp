@@ -27,8 +27,8 @@ Contributors:
 */
 
 #include <dqrobotics/DQ.h>
-#include <dqrobotics/interfaces/coppeliasim/DQ_CoppeliaSimZmqInterface.h>
-#include <dqrobotics/interfaces/coppeliasim/robots/URXCoppeliaSimZmqRobot.h>
+#include <dqrobotics/interfaces/coppeliasim/DQ_CoppeliaSimInterfaceZMQ.h>
+#include <dqrobotics/interfaces/coppeliasim/robots/URXCoppeliaSimZMQRobot.h>
 
 using namespace DQ_robotics;
 using namespace Eigen;
@@ -41,11 +41,11 @@ VectorXd compute_control_signal(const MatrixXd J,
 
 int main()
 {
-    auto vi = std::make_shared<DQ_CoppeliaSimZmqInterface>();
+    auto vi = std::make_shared<DQ_CoppeliaSimInterfaceZMQ>();
     vi->connect();
 
 
-    auto vi_exp = std::make_shared<DQ_CoppeliaSimZmqInterface::experimental>(vi);
+    auto vi_exp = std::make_shared<DQ_CoppeliaSimInterfaceZMQ::experimental>(vi);
     vi_exp->close_scene();
 
     // Load the models only if they are not already on the scene.
@@ -55,15 +55,15 @@ int main()
     vi_exp->plot_reference_frame("/Desired_pose", DQ(1), 1.5, {0.02, 0.1});
 
 
-    auto robot = URXCoppeliaSimZmqRobot("/UR5", vi, URXCoppeliaSimZmqRobot::MODEL::UR5);
+    auto robot = URXCoppeliaSimZMQRobot("/UR5", vi, URXCoppeliaSimZMQRobot::MODEL::UR5);
     auto robot_model = robot.kinematics();
 
     vi_exp->enable_dynamics(false);
     //vi_exp->set_joint_control_modes(robot.get_joint_names(), DQ_CoppeliaSimZmqInterface::JOINT_CONTROL_MODE::POSITION);
-    vi_exp->set_joint_modes(robot.get_joint_names(), DQ_CoppeliaSimZmqInterface::JOINT_MODE::KINEMATIC);
+    vi_exp->set_joint_modes(robot.get_joint_names(), DQ_CoppeliaSimInterfaceZMQ::JOINT_MODE::KINEMATIC);
 
 
-    VectorXd q = robot.get_configuration_space_positions();
+    VectorXd q = robot.get_configuration_space();
     double gain = 10;
     double T = 0.001;
     double damping = 0.01;
